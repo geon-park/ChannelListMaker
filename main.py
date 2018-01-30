@@ -1,7 +1,11 @@
-import sys
+import chardet
+import codecs
 import csv
-from collections import OrderedDict
+import io
+import os
+import sys
 
+from collections import OrderedDict
 from channellistmaker import ChannelListMaker
 from PyQt5.QtWidgets import *
 
@@ -69,9 +73,20 @@ class ChannelListWindow(QMainWindow):
     def open_button_clicked(self):
         file_names = QFileDialog.getOpenFileName(filter='All Files (*.*);;CSV Files (*.csv)')
         if file_names[0]:
+            file_path = file_names[0]
             self.clear_data_list()
-            self.file_path.setText(file_names[0])
-            with open(file_names[0], 'r', encoding='utf-8') as f:
+            self.file_path.setText(file_path)
+
+            with open(file_path, 'rb') as f:
+                length_for_check = min(8192, os.path.getsize(file_path))
+                raw = f.read(length_for_check)
+                if raw.startswith(codecs.BOM_UTF8):
+                    encoding = 'utf-8-sig'
+                else:
+                    result = chardet.detect(raw)
+                    encoding = result['encoding']
+
+            with io.open(file_path, 'r', encoding=encoding) as f:
                 reader = csv.DictReader(f)
                 for line in reader:
                     row = self.list_channels.rowCount()
